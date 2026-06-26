@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE風 AIチャットBot（Google公式画像生成対応版）</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* トップページ（初期表示） */
+        #top-page {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #7493c1; /* LINE風の青背景 */
+        }
+        .top-card {
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 90%;
+            max-width: 350px;
+        }
+        .top-card h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .top-card p {
+            font-size: 14px;
+            color: #666;
+        }
+        .top-card input {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .top-card input:focus {
+            border-color: #7493c1;
+        }
+        .top-card button {
+            background-color: #53b644;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .top-card button:hover {
+            background-color: #459d37;
+        }
+
+        /* メインアプリ全体（初期は非表示） */
+        #main-app {
+            display: none; 
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* 設定エリア（上部） */
+        #config-area {
+            background-color: #ffffff;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .config-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .config-row label {
+            font-size: 12px;
+            font-weight: bold;
+            width: 75px;
+            color: #555;
+            white-space: nowrap;
+        }
+        .config-row input {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            background-color: #ffffff; /* 初期は白 */
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .save-btn {
+            background-color: #7493c1;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .save-btn:hover {
+            background-color: #5a759e;
+        }
+
+        /* 確定後の入力欄のデザイン（薄い青） */
+        .input-saved {
+            background-color: #e4f2fd !important;
+            border-color: #7493c1 !important;
+        }
+
+        /* チャットエリア（中央） */
+        #chat-container {
+            flex: 1;
+            background-color: #7493c1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .message {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            max-width: 80%;
+            gap: 5px;
+        }
+        .message-text {
+            padding: 10px 14px;
+            border-radius: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        .message-image {
+            max-width: 250px;
+            border-radius: 15px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .loading-text {
+            font-size: 12px;
+            color: #555;
+            background-color: #e0e0e0;
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+        .bot {
+            align-self: flex-start;
+        }
+        .bot .message-text {
+            background-color: #ffffff;
+            color: #000000;
+            border-radius: 15px 15px 15px 0px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+        .user .message-text {
+            background-color: #85e249;
+            color: #000000;
+            border-radius: 15px 15px 0px 15px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* 入力エリア（下部） */
+        #input-area {
+            background-color: #ffffff;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            border-top: 1px solid #ddd;
+        }
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+        #send-button {
+            background-color: #53b644;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        #send-button:hover {
+            background-color: #459d37;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- トップページ -->
+    <div id="top-page">
+        <div class="top-card">
+            <h1>ようこそ！</h1>
+            <p>チャットを始める前に<br>あなたの名前を教えてください</p>
+            <input type="text" id="top-name-input" placeholder="例：直樹" autocomplete="off">
+            <button onclick="startApp()">確定してはじめる</button>
+        </div>
+    </div>
+
+    <!-- メインアプリ（チャット画面） -->
+    <div id="main-app">
+        <div id="config-area">
+            <div class="config-row">
+                <label for="user-name">あなたの名前:</label>
+                <input type="text" id="user-name" placeholder="例：直樹">
+                <button class="save-btn" onclick="saveUserName()">確定</button>
+            </div>
+            <div class="config-row">
+                <label for="api-key">API Key:</label>
+                <input type="password" id="api-key" placeholder="AIのAPIキーを入力してください">
+                <button class="save-btn" onclick="saveApiKey()">確定</button>
+            </div>
+            <div class="config-row">
+                <label for="system-prompt">キャラ設定:</label>
+                <input type="text" id="system-prompt" placeholder="例：あなたはツンデレな幼馴染です。">
+                <button class="save-btn" onclick="saveSystemPrompt()">確定</button>
+            </div>
+        </div>
+
+        <div id="chat-container">
+            <div class="message bot">
+                <div class="message-text">こんにちは！上にAPIキーとキャラ設定を入力して「確定」を押してから、メッセージを送ってみてね！</div>
+            </div>
+        </div>
+
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="メッセージを入力..." autocomplete="off">
+            <button id="send-button" onclick="sendMessage()">送信</button>
+        </div>
+    </div>
+
+    <script>
+        let chatHistory = [];
+        
+        let confirmedUserName = "";
+        let confirmedApiKey = "";
+        let confirmedSystemPrompt = "";
+
+        // ページ読み込み時に保存された設定があれば復元する
+        window.addEventListener('DOMContentLoaded', () => {
+            // トップページの名前入力欄を復元（次回アクセス時に入力の手間を省くため）
+            const savedName = localStorage.getItem('gemini_user_name');
+            if (savedName) {
+                document.getElementById('top-name-input').value = savedName;
+            }
+
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) {
+                document.getElementById('api-key').value = savedKey;
+                saveApiKey();
+            }
+            
+            const savedPrompt = localStorage.getItem('gemini_system_prompt');
+            if (savedPrompt) {
+                document.getElementById('system-prompt').value = savedPrompt;
+                saveSystemPrompt();
+            }
+        });
+
+        // トップページからチャット画面への移行処理
+        function startApp() {
+            const nameInput = document.getElementById('top-name-input').value.trim();
+            if (!nameInput) {
+                alert("名前を入力してください。");
+                return;
+            }
+
+            // 画面を切り替え
+            document.getElementById('top-page').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+
+            // トップページで入力した名前をチャット画面の入力欄に反映し、確定状態にする
+            document.getElementById('user-name').value = nameInput;
+            saveUserName();
+        }
+
+        function saveUserName() {
+            const inputElement = document.getElementById('user-name');
+            const val = inputElement.value.trim();
+            if (!val) {
+                alert("名前を入力してください。");
+                return;
+            }
+            confirmedUserName = val;
+            localStorage.setItem('gemini_user_name', val);
+            inputElement.classList.add('input-saved');
+        }
+
+        function saveApiKey() {
+            const inputElement = document.getElementById('api-key');
+            const val = inputElement.value.trim();
+            if (!val) {
+                alert("APIキーを入力してください。");
+                return;
+            }
+            confirmedApiKey = val;
+            localStorage.setItem('gemini_api_key', val);
+            inputElement.classList.add('input-saved');
+        }
+
+        function saveSystemPrompt() {
+            const inputElement = document.getElementById('system-prompt');
+            const val = inputElement.value.trim();
+            if (!val) {
+                alert("キャラ設定を入力してください。");
+                return;
+            }
+            confirmedSystemPrompt = val;
+            localStorage.setItem('gemini_system_prompt', val);
+            inputElement.classList.add('input-saved');
+        }
+
+        // 入力内容が変更されたら「確定済（青色）」の装飾を解除するイベントリスナー
+        document.getElementById('user-name').addEventListener('input', function() {
+            this.classList.remove('input-saved');
+            confirmedUserName = "";
+        });
+        document.getElementById('api-key').addEventListener('input', function() {
+            this.classList.remove('input-saved');
+            confirmedApiKey = "";
+        });
+        document.getElementById('system-prompt').addEventListener('input', function() {
+            this.classList.remove('input-saved');
+            confirmedSystemPrompt = "";
+        });
+
+        // トップページでのEnterキー対応
+        document.getElementById('top-name-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                startApp();
+            }
+        });
+
+        // チャット画面でのEnterキー対応
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function appendMessage(sender, text) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+
+            const textDiv = document.createElement('div');
+            textDiv.classList.add('message-text');
+            textDiv.textContent = text;
+
+            messageDiv.appendChild(textDiv);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function appendGeneratedImage(sender, imagePrompt) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.classList.add('loading-text');
+            loadingDiv.textContent = "📷 画像を生成中...";
+            messageDiv.appendChild(loadingDiv);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key=${confirmedApiKey}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instances: [{
+                            prompt: imagePrompt + ", high quality, masterpiece"
+                        }],
+                        parameters: {
+                            sampleCount: 1,
+                            aspectRatio: "1:1"
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.predictions && data.predictions[0].bytesBase64Encoded) {
+                    const base64Image = data.predictions[0].bytesBase64Encoded;
+                    
+                    const imgElement = document.createElement('img');
+                    imgElement.src = `data:image/jpeg;base64,${base64Image}`;
+                    imgElement.classList.add('message-image');
+                    
+                    messageDiv.removeChild(loadingDiv);
+                    messageDiv.appendChild(imgElement);
+                } else if (data.error && data.error.message) {
+                    loadingDiv.textContent = `画像生成エラー: ${data.error.message}`;
+                } else {
+                    loadingDiv.textContent = "画像の生成に失敗しました😢";
+                }
+            } catch (error) {
+                console.error(error);
+                loadingDiv.textContent = "通信エラーが発生しました😢";
+            }
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const inputElement = document.getElementById('message-input');
+            const userText = inputElement.value.trim();
+
+            if (!userText) return;
+            
+            if (!confirmedUserName) {
+                alert("あなたの名前を確定させてください。");
+                return;
+            }
+            if (!confirmedApiKey) {
+                alert("APIキーを入力し、「確定」ボタンを押してください。");
+                return;
+            }
+            if (!confirmedSystemPrompt) {
+                alert("キャラ設定を入力し、「確定」ボタンを押してください。");
+                return;
+            }
+
+            appendMessage('user', userText);
+            inputElement.value = ''; 
+
+            chatHistory.push({
+                role: "user",
+                parts: [{ text: userText }]
+            });
+
+            const baseRule = `【会話の基本ルール（厳守）】
+・これはLINEなどのメッセージアプリでのやり取りです。
+・1回の返信は短くまとめ、スマホで打ったような自然な短文にしてください。
+・（微笑む）や *抱きしめる* のような、小説やロールプレイのような行動描写・ト書きは「絶対に」使用しないでください。
+・絵文字は毎回のメッセージにつけるのではなく、感情が大きく動いた時など、本当に適切な場面でのみ自然な頻度で使用してください。文末に毎回絵文字をつけるような不自然な多用は厳禁です。
+
+【画像送信の特別ルール】
+・ユーザーから「写真送って」「自撮り見せて」「どんな服？」「今どこ？」など、あなた自身の姿や状況の画像を要求された場合は、文章の最後に必ず [PHOTO: 〇〇] という文字列を付与してください。
+・〇〇の部分には、ユーザーの要求や直前の会話の文脈に合わせた「あなた（20代前半の日本人女性）の姿や状況を表す英語の画像生成用プロンプト」を入れてください。
+・プロンプトの例1：[PHOTO: 1girl, 20s, japanese, cute, selfie, wearing casual clothes, in a cafe]
+・プロンプトの例2：[PHOTO: 1girl, 20s, japanese, pajamas, sleepy face, selfie, in bedroom]
+・画像を要求されていない通常の会話では、[PHOTO: 〇〇] は絶対に出力しないでください。
+
+`;
+            // AIにユーザーの名前を認識させるため、プロンプトに動的に名前を埋め込む
+            const finalSystemPrompt = baseRule + `※会話相手（ユーザー）の名前は「${confirmedUserName}」です。名前を呼ぶ時はこの設定に従ってください。\n\n【キャラクター設定】\n` + confirmedSystemPrompt;
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${confirmedApiKey}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: chatHistory,
+                        systemInstruction: { parts: [{ text: finalSystemPrompt }] }
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    let aiText = data.candidates[0].content.parts[0].text;
+
+                    const photoRegex = /\[PHOTO:\s*(.*?)\s*\]/;
+                    const match = aiText.match(photoRegex);
+                    
+                    let imagePrompt = null;
+                    if (match && match[1]) {
+                        imagePrompt = match[1];
+                    }
+                    
+                    aiText = aiText.replace(photoRegex, '').trim();
+
+                    if (aiText) {
+                        appendMessage('bot', aiText);
+                    }
+
+                    if (imagePrompt) {
+                        appendGeneratedImage('bot', imagePrompt);
+                    }
+
+                    chatHistory.push({
+                        role: "model",
+                        parts: [{ text: aiText }]
+                    });
+
+                    if (chatHistory.length > 20) {
+                        chatHistory.shift();
+                        chatHistory.shift();
+                    }
+
+                } else if (data.error && data.error.message) {
+                    appendMessage('bot', `Googleからのエラー報告: ${data.error.message}`);
+                } else {
+                    appendMessage('bot', 'エラー：AIからの返答をうまく取得できませんでした。');
+                }
+
+            } catch (error) {
+                console.error(error);
+                appendMessage('bot', '通信エラーが発生しました。インターネット接続などを確認してください。');
+            }
+        }
+    </script>
+</body>
+</html>
