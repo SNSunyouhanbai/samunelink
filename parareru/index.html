@@ -14,8 +14,11 @@
             font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
             background-color: #f0f2f5;
             margin: 0;
+            /* 古いブラウザ用の保険 ＋ スマホのアドレスバー対策 */
             height: 100vh;
+            height: 100dvh; 
             overflow: hidden;
+            overscroll-behavior-y: none; /* iOSのバウンススクロール対策 */
         }
 
         /* トップページ（初期表示） */
@@ -24,7 +27,9 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            /* スマホ対策 */
             height: 100vh;
+            height: 100dvh;
             background-color: #7493c1; /* LINE風の青背景 */
         }
         .top-card {
@@ -78,7 +83,9 @@
         #main-app {
             display: none; 
             flex-direction: column;
+            /* スマホ対策 */
             height: 100vh;
+            height: 100dvh;
         }
 
         /* 設定エリア（上部） */
@@ -224,7 +231,6 @@
 </head>
 <body>
 
-    <!-- トップページ -->
     <div id="top-page">
         <div class="top-card">
             <h1>ようこそ！</h1>
@@ -234,7 +240,6 @@
         </div>
     </div>
 
-    <!-- メインアプリ（チャット画面） -->
     <div id="main-app">
         <div id="config-area">
             <div class="config-row">
