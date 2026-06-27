@@ -88,15 +88,47 @@
             height: 100dvh;
         }
 
-        /* 設定エリア（上部） */
+        /* 設定エリア（折りたたみ対応） */
         #config-area {
             background-color: #ffffff;
-            padding: 10px;
             border-bottom: 1px solid #ddd;
             display: flex;
             flex-direction: column;
-            gap: 5px;
         }
+        /* 折りたたみ用のヘッダー */
+        .config-header {
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+            user-select: none;
+        }
+        /* 設定内容のラッパー */
+        .config-content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+            max-height: 250px; /* 開いている時の最大高さ */
+            opacity: 1;
+            border-top: 1px solid #eee;
+        }
+        /* 閉じている時のクラス */
+        .config-content.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            border-top: none;
+        }
+
         .config-row {
             display: flex;
             gap: 10px;
@@ -115,7 +147,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 13px;
-            background-color: #ffffff; /* 初期は白 */
+            background-color: #ffffff;
             transition: background-color 0.3s, border-color 0.3s;
         }
         .save-btn {
@@ -242,20 +274,27 @@
 
     <div id="main-app">
         <div id="config-area">
-            <div class="config-row">
-                <label for="user-name">あなたの名前:</label>
-                <input type="text" id="user-name" placeholder="例：直樹">
-                <button class="save-btn" onclick="saveUserName()">確定</button>
+            <div class="config-header" onclick="toggleConfig()">
+                <span>⚙️ 設定メニュー</span>
+                <span id="config-toggle-icon">▲</span>
             </div>
-            <div class="config-row">
-                <label for="api-key">API Key:</label>
-                <input type="password" id="api-key" placeholder="AIのAPIキーを入力してください">
-                <button class="save-btn" onclick="saveApiKey()">確定</button>
-            </div>
-            <div class="config-row">
-                <label for="system-prompt">キャラ設定:</label>
-                <input type="text" id="system-prompt" placeholder="例：あなたはツンデレな幼馴染です。">
-                <button class="save-btn" onclick="saveSystemPrompt()">確定</button>
+            
+            <div class="config-content" id="config-content">
+                <div class="config-row">
+                    <label for="user-name">あなたの名前:</label>
+                    <input type="text" id="user-name" placeholder="例：直樹">
+                    <button class="save-btn" onclick="saveUserName()">確定</button>
+                </div>
+                <div class="config-row">
+                    <label for="api-key">API Key:</label>
+                    <input type="password" id="api-key" placeholder="AIのAPIキーを入力してください">
+                    <button class="save-btn" onclick="saveApiKey()">確定</button>
+                </div>
+                <div class="config-row">
+                    <label for="system-prompt">キャラ設定:</label>
+                    <input type="text" id="system-prompt" placeholder="例：あなたはツンデレな幼馴染です。">
+                    <button class="save-btn" onclick="saveSystemPrompt()">確定</button>
+                </div>
             </div>
         </div>
 
@@ -280,7 +319,6 @@
 
         // ページ読み込み時に保存された設定があれば復元する
         window.addEventListener('DOMContentLoaded', () => {
-            // トップページの名前入力欄を復元（次回アクセス時に入力の手間を省くため）
             const savedName = localStorage.getItem('gemini_user_name');
             if (savedName) {
                 document.getElementById('top-name-input').value = savedName;
@@ -299,6 +337,20 @@
             }
         });
 
+        // 設定エリアの開閉切り替え関数
+        function toggleConfig() {
+            const content = document.getElementById('config-content');
+            const icon = document.getElementById('config-toggle-icon');
+            
+            content.classList.toggle('collapsed');
+            
+            if (content.classList.contains('collapsed')) {
+                icon.textContent = '▼';
+            } else {
+                icon.textContent = '▲';
+            }
+        }
+
         // トップページからチャット画面への移行処理
         function startApp() {
             const nameInput = document.getElementById('top-name-input').value.trim();
@@ -314,6 +366,14 @@
             // トップページで入力した名前をチャット画面の入力欄に反映し、確定状態にする
             document.getElementById('user-name').value = nameInput;
             saveUserName();
+
+            // すべての設定が完了している場合は、自動的に設定画面を折りたたむ
+            if (confirmedUserName && confirmedApiKey && confirmedSystemPrompt) {
+                const content = document.getElementById('config-content');
+                const icon = document.getElementById('config-toggle-icon');
+                content.classList.add('collapsed');
+                icon.textContent = '▼';
+            }
         }
 
         function saveUserName() {
@@ -487,7 +547,7 @@
 ・画像を要求されていない通常の会話では、[PHOTO: 〇〇] は絶対に出力しないでください。
 
 `;
-            // AIにユーザーの名前を認識させるため、プロンプトに動的に名前を埋め込む
+            
             const finalSystemPrompt = baseRule + `※会話相手（ユーザー）の名前は「${confirmedUserName}」です。名前を呼ぶ時はこの設定に従ってください。\n\n【キャラクター設定】\n` + confirmedSystemPrompt;
 
             try {
