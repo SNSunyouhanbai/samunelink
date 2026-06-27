@@ -20,7 +20,7 @@
             overscroll-behavior-y: none;
         }
 
-        /* トップページ */
+        /* トップページ（初期表示） */
         #top-page {
             display: flex;
             flex-direction: column;
@@ -77,7 +77,7 @@
             background-color: #459d37;
         }
 
-        /* メインアプリ */
+        /* メインアプリ全体（初期は非表示） */
         #main-app {
             display: none; 
             flex-direction: column;
@@ -85,7 +85,7 @@
             height: 100dvh;
         }
 
-        /* 設定エリア */
+        /* 設定エリア（折りたたみ対応） */
         #config-area {
             background-color: #ffffff;
             border-bottom: 1px solid #ddd;
@@ -162,7 +162,7 @@
             border-color: #7493c1 !important;
         }
 
-        /* チャットエリア */
+        /* チャットエリア（中央） */
         #chat-container {
             flex: 1;
             background-color: #7493c1;
@@ -219,13 +219,13 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
-        /* 入力エリア */
+        /* 入力エリア（下部） - textareaに合わせて微調整 */
         #input-area {
             background-color: #ffffff;
             padding: 10px;
             display: flex;
             gap: 10px;
-            align-items: flex-end;
+            align-items: flex-end; /* 複数行になった時にボタンを下に合わせる */
             border-top: 1px solid #ddd;
         }
         #message-input {
@@ -235,17 +235,18 @@
             border-radius: 15px;
             font-size: 14px;
             outline: none;
-            resize: none; 
-            height: 44px; 
+            resize: none; /* ユーザーによるサイズ変更を禁止 */
+            height: 44px; /* 初期の1行分の高さ */
             font-family: inherit;
             line-height: 1.4;
             overflow-y: auto;
         }
+        /* スクリプト側で高さを自動調整しますが、大きくなりすぎないように最大高さを指定 */
         #message-input::-webkit-scrollbar {
             display: none;
         }
         #send-button {
-            height: 44px; 
+            height: 44px; /* 入力欄の初期の高さに合わせる */
             background-color: #53b644;
             color: white;
             border: none;
@@ -266,7 +267,7 @@
     <div id="top-page">
         <div class="top-card">
             <h1>ようこそ！</h1>
-            <p>チャットを始める前に<br>直樹さんの名前を教えてください</p>
+            <p>チャットを始める前に<br>あなたの名前を教えてください</p>
             <input type="text" id="top-name-input" placeholder="例：直樹" autocomplete="off">
             <button onclick="startApp()">確定してはじめる</button>
         </div>
@@ -305,7 +306,7 @@
         </div>
 
         <div id="input-area">
-            <textarea id="message-input" placeholder="メッセージを入力..." enterkeyhint="enter"></textarea>
+            <textarea id="message-input" placeholder="メッセージを入力..."></textarea>
             <button id="send-button" onclick="sendMessage()">送信</button>
         </div>
     </div>
@@ -317,6 +318,7 @@
         let confirmedApiKey = "";
         let confirmedSystemPrompt = "";
 
+        // ページ読み込み時に保存された設定があれば復元する
         window.addEventListener('DOMContentLoaded', () => {
             const savedName = localStorage.getItem('gemini_user_name');
             if (savedName) {
@@ -336,6 +338,7 @@
             }
         });
 
+        // 設定エリアの開閉切り替え関数
         function toggleConfig() {
             const content = document.getElementById('config-content');
             const icon = document.getElementById('config-toggle-icon');
@@ -349,6 +352,7 @@
             }
         }
 
+        // トップページからチャット画面への移行処理
         function startApp() {
             const nameInput = document.getElementById('top-name-input').value.trim();
             if (!nameInput) {
@@ -419,28 +423,25 @@
             confirmedSystemPrompt = "";
         });
 
-        // トップページでのEnterキー対応
+        // トップページでのEnterキー対応（そのまま残す）
         document.getElementById('top-name-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 startApp();
             }
         });
 
+        // ※ チャット画面でのEnterキーで送信する処理（addEventListener('keypress')）は削除しました。
+        // これにより、Enterキーは純粋な改行として機能します。
+
+        // 改行に合わせてテキストエリアの高さを自動調整する機能を追加
         const textarea = document.getElementById('message-input');
         textarea.addEventListener('input', function() {
-            this.style.height = '44px'; 
+            this.style.height = '44px'; // 一旦初期サイズに戻す
             const scrollHeight = this.scrollHeight;
             if (scrollHeight < 120) {
-                this.style.height = scrollHeight + 'px'; 
+                this.style.height = scrollHeight + 'px'; // 内容に合わせて広げる
             } else {
-                this.style.height = '120px'; 
-            }
-        });
-
-        // スマホなどの不要なイベント発火をストップさせる念のための記述
-        textarea.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.stopPropagation(); // 改行は許可しつつ、他の処理（送信など）への連鎖を完全に防ぐ
+                this.style.height = '120px'; // 最大の高さを設定
             }
         });
 
@@ -531,6 +532,7 @@
 
             appendMessage('user', userText);
             
+            // 送信後に入力欄をリセットし、高さも初期状態に戻す
             inputElement.value = ''; 
             inputElement.style.height = '44px';
 
