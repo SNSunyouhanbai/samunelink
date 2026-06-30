@@ -161,6 +161,22 @@
             background-color: #e4f2fd !important;
             border-color: #7493c1 !important;
         }
+        /* Stripe決済用ボタンのスタイル */
+        .stripe-btn {
+            background-color: #635bff; /* Stripeカラー */
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        .stripe-btn:hover {
+            background-color: #4b44d3;
+        }
 
         /* チャットエリア（中央） */
         #chat-container {
@@ -219,13 +235,13 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
-        /* 入力エリア（下部） - textareaに合わせて微調整 */
+        /* 入力エリア（下部） */
         #input-area {
             background-color: #ffffff;
             padding: 10px;
             display: flex;
             gap: 10px;
-            align-items: flex-end; /* 複数行になった時にボタンを下に合わせる */
+            align-items: flex-end; 
             border-top: 1px solid #ddd;
         }
         #message-input {
@@ -235,18 +251,17 @@
             border-radius: 15px;
             font-size: 14px;
             outline: none;
-            resize: none; /* ユーザーによるサイズ変更を禁止 */
-            height: 44px; /* 初期の1行分の高さ */
+            resize: none; 
+            height: 44px; 
             font-family: inherit;
             line-height: 1.4;
             overflow-y: auto;
         }
-        /* スクリプト側で高さを自動調整しますが、大きくなりすぎないように最大高さを指定 */
         #message-input::-webkit-scrollbar {
             display: none;
         }
         #send-button {
-            height: 44px; /* 入力欄の初期の高さに合わせる */
+            height: 44px; 
             background-color: #53b644;
             color: white;
             border: none;
@@ -296,6 +311,14 @@
                     <input type="text" id="system-prompt" placeholder="例：あなたはツンデレな幼馴染です。">
                     <button class="save-btn" onclick="saveSystemPrompt()">確定</button>
                 </div>
+                
+                <div class="config-row" style="margin-top: 10px; justify-content: center;">
+                    <form action="/create-checkout-session" method="POST" style="width: 100%;">
+                        <button type="submit" class="stripe-btn">
+                            🎫 チケット 400枚を購入する (¥1,000)
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -335,6 +358,21 @@
             if (savedPrompt) {
                 document.getElementById('system-prompt').value = savedPrompt;
                 saveSystemPrompt();
+            }
+
+            // 💡 URLに「決済成功（session_id）」が含まれているかチェックする
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+            if (sessionId) {
+                // 今回はテストなので、アラートを出すだけにしておきます
+                alert("決済が完了しました！(Session ID: " + sessionId + ")\n※本来はここでデータベースのチケット枚数を増やします。");
+                
+                // トップページをスキップして、そのままメインアプリを表示
+                document.getElementById('top-page').style.display = 'none';
+                document.getElementById('main-app').style.display = 'flex';
+                
+                // URLからパラメーターを消して綺麗にする
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
 
@@ -423,25 +461,21 @@
             confirmedSystemPrompt = "";
         });
 
-        // トップページでのEnterキー対応（そのまま残す）
         document.getElementById('top-name-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 startApp();
             }
         });
 
-        // ※ チャット画面でのEnterキーで送信する処理（addEventListener('keypress')）は削除しました。
-        // これにより、Enterキーは純粋な改行として機能します。
-
-        // 改行に合わせてテキストエリアの高さを自動調整する機能を追加
+        // 改行に合わせてテキストエリアの高さを自動調整
         const textarea = document.getElementById('message-input');
         textarea.addEventListener('input', function() {
-            this.style.height = '44px'; // 一旦初期サイズに戻す
+            this.style.height = '44px'; 
             const scrollHeight = this.scrollHeight;
             if (scrollHeight < 120) {
-                this.style.height = scrollHeight + 'px'; // 内容に合わせて広げる
+                this.style.height = scrollHeight + 'px'; 
             } else {
-                this.style.height = '120px'; // 最大の高さを設定
+                this.style.height = '120px'; 
             }
         });
 
@@ -532,7 +566,6 @@
 
             appendMessage('user', userText);
             
-            // 送信後に入力欄をリセットし、高さも初期状態に戻す
             inputElement.value = ''; 
             inputElement.style.height = '44px';
 
@@ -540,8 +573,6 @@
                 role: "user",
                 parts: [{ text: userText }]
             });
-
-            // プログラム内の baseRule を以下のように変更します
 
             const baseRule = `【会話の基本ルール（厳守）】
 ・これはLINEなどのメッセージアプリでのやり取りです。
