@@ -111,7 +111,7 @@
             gap: 5px;
             overflow: hidden;
             transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
-            max-height: 250px; 
+            max-height: 400px; 
             opacity: 1;
             border-top: 1px solid #eee;
         }
@@ -160,22 +160,6 @@
         .input-saved {
             background-color: #e4f2fd !important;
             border-color: #7493c1 !important;
-        }
-        /* Stripe決済用ボタンのスタイル */
-        .stripe-btn {
-            background-color: #635bff; /* Stripeカラー */
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s;
-        }
-        .stripe-btn:hover {
-            background-color: #4b44d3;
         }
 
         /* チャットエリア（中央） */
@@ -319,6 +303,14 @@
                         </button>
                     </a>
                 </div>
+
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                <div class="config-row">
+                    <label for="serial-code">チケット追加:</label>
+                    <input type="text" id="serial-code" placeholder="購入後のコードを入力">
+                    <button class="save-btn" onclick="verifySerialCode()">追加</button>
+                </div>
+
             </div>
         </div>
 
@@ -341,7 +333,6 @@
         let confirmedApiKey = "";
         let confirmedSystemPrompt = "";
 
-        // ページ読み込み時に保存された設定があれば復元する
         window.addEventListener('DOMContentLoaded', () => {
             const savedName = localStorage.getItem('gemini_user_name');
             if (savedName) {
@@ -360,23 +351,16 @@
                 saveSystemPrompt();
             }
 
-            // 💡 URLに「決済成功（session_id）」が含まれているかチェックする
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('session_id');
             if (sessionId) {
-                // 今回はテストなので、アラートを出すだけにしておきます
                 alert("決済が完了しました！(Session ID: " + sessionId + ")\n※本来はここでデータベースのチケット枚数を増やします。");
-                
-                // トップページをスキップして、そのままメインアプリを表示
                 document.getElementById('top-page').style.display = 'none';
                 document.getElementById('main-app').style.display = 'flex';
-                
-                // URLからパラメーターを消して綺麗にする
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
 
-        // 設定エリアの開閉切り替え関数
         function toggleConfig() {
             const content = document.getElementById('config-content');
             const icon = document.getElementById('config-toggle-icon');
@@ -390,7 +374,6 @@
             }
         }
 
-        // トップページからチャット画面への移行処理
         function startApp() {
             const nameInput = document.getElementById('top-name-input').value.trim();
             if (!nameInput) {
@@ -467,7 +450,6 @@
             }
         });
 
-        // 改行に合わせてテキストエリアの高さを自動調整
         const textarea = document.getElementById('message-input');
         textarea.addEventListener('input', function() {
             this.style.height = '44px'; 
@@ -647,6 +629,35 @@
             } catch (error) {
                 console.error(error);
                 appendMessage('bot', '通信エラーが発生しました。インターネット接続などを確認してください。');
+            }
+        }
+
+        // 👇 追加：入力されたシリアルコードをPythonサーバーで確認する処理
+        async function verifySerialCode() {
+            const codeInput = document.getElementById('serial-code').value.trim();
+            if (!codeInput) {
+                alert("コードを入力してください。");
+                return;
+            }
+
+            try {
+                const response = await fetch('/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: codeInput })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message); 
+                    document.getElementById('serial-code').value = ''; 
+                } else {
+                    alert("エラー: " + data.message + (data.error ? "\n詳細: " + data.error : "")); 
+                }
+            } catch (error) {
+                console.error(error);
+                alert("通信エラーが発生しました。Pythonサーバーが起動しているか確認してください。");
             }
         }
     </script>
